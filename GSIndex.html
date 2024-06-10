@@ -303,7 +303,7 @@
                         skill: row[5],
                         interests: row[6] ? row[6].split(', ') : [],
                         note: row[7],
-                        originalIndex: index // 添加原始索引
+                        originalIndex: index // 加入原始索引
                     }));
                     this.filteredMembers = this.members;
                 },
@@ -342,9 +342,9 @@
                     this.pendingMember = false;
                 },
                 async removeMember(index) {
-                    const originalIndex = this.filteredMembers[index].originalIndex; // 获取原始索引
+                    const originalIndex = this.filteredMembers[index].originalIndex; // 獲得原始索引
                     if (this.sheetId !== null) {
-                        await deleteRow(this.SPREADSHEET_ID, this.sheetId, originalIndex + 1); // 使用原始索引删除行，Google Sheets 行索引从1开始
+                        await deleteRow(this.SPREADSHEET_ID, this.sheetId, originalIndex + 1); // 使用原始索引刪除行，Google Sheets 行索引從1開始
                         this.listMajors();
                     } else {
                         console.error('Sheet ID is not available.');
