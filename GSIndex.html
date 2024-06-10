@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>會員管理系統</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="googleSheetsAPI.js"></script>
+    <style>
+        textarea {
+            width: 100%;
+            height: 150px;
+            max-width: 500px;
+            max-height: 300px;
+        }
+
+        .fsupmin {
+            vertical-align: super;
+            font-size: 0.5em;
+            color: red;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            max-width: 50%;
+        }
+
+        .bg-gray {
+            background-color: rgba(150, 150, 150, 0.5);
+        }
+
+        a {
+            cursor: pointer;
+            text-decoration: none;
+            color: initial;
+            font-size: x-large;
+        }
+    </style>
+</head>
+
+<body class="fw-bold">
+    <div id="app" class="container mt-5">
+        <div class="bg-gray mb-3">
+            <h3 class="mt-2 ms-2 fw-bold d-inline-block">會員管理系統</h3>
+            <a @click="currentView = 'add'" class="mt-2 ms-2">新增</a>
+            <a @click="currentView = 'query'" class="mt-2 ms-2">查詢</a>
+            <button id="authorize_button" @click="handleAuthClick" class="mt-2 ms-2">驗證登入</button>
+            <button id="signout_button" @click="handleSignoutClick" class="d-none mt-2 ms-2">登出</button>
+        </div>
+
+        <!-- 新增页面 -->
+        <div v-if="currentView === 'add'" id="Addarea">
+            <button class="m-2 btn btn-secondary rounded-pill">會員新增</button>
+            <div class="mb-3 row">
+                <div class="mb-3">
+                    <label class="d-inline-block me-2">帳號<p class="d-inline-block fsupmin">必填</p></label>
+                    <input v-model="newAccount" type="email" class="form-control d-inline-block w-auto mb-2"
+                        placeholder="email@123.com" required>
+                </div>
+                <div class="mb-3">
+                    <label class="d-inline-block me-2">姓名<p class="d-inline-block fsupmin">必填</p></label>
+                    <input v-model="newName" class="form-control d-inline-block w-auto mb-2" placeholder="name"
+                        required>
+                </div>
+                <div class="mb-3">
+                    <label class="d-inline-block me-2">國家<p class="d-inline-block fsupmin">必填</p></label>
+                    <select v-model="newCountry" class="form-control d-inline-block w-auto" required>
+                        <option>台灣</option>
+                        <option>新加坡</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="d-inline-block me-2">城市<p class="d-inline-block fsupmin">必填</p></label>
+                    <select v-model="newCity" class="form-control d-inline-block w-auto" required>
+                        <option>台北</option>
+                        <option>吉隆坡</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="d-inline-block me-2">性別</label>
+                    <label class="mx-3"><input type="radio" v-model="newGender" value="男" class="form-check-input me-2">
+                        男</label>
+                    <label><input type="radio" v-model="newGender" value="女" class="form-check-input me-2"> 女</label>
+                </div>
+                <div class="mb-3">
+                    <label class="d-inline-block me-2">專長<p class="d-inline-block fsupmin">必填</p></label>
+                    <input v-model="newSkill" class="form-control d-inline-block w-auto mb-2">
+                    <button @click="prepareAddMember" class="btn btn-primary m-2 fw-bold rounded-pill"
+                        style="background-color:deepskyblue;width: 100px;">新增</button>
+                </div>
+                <div>
+                    <label class="me-2 mb-2">請選擇感興趣的主題</label>
+                    <div class="checkbox-group">
+                        <label class="me-2"><input type="checkbox" v-model="newInterests" value="寶可夢"> 寶可夢</label>
+                        <label class="me-2"><input type="checkbox" v-model="newInterests" value="多啦A夢"> 多啦A夢</label>
+                        <label class="me-2"><input type="checkbox" v-model="newInterests" value="蠟筆小新"> 蠟筆小新</label>
+                        <label class="me-2"><input type="checkbox" v-model="newInterests" value="名偵探柯南"> 名偵探柯南</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <label class="me-2"><input type="checkbox" v-model="newInterests" value="New Jeans"> New
+                            Jeans</label>
+                        <label class="me-2"><input type="checkbox" v-model="newInterests" value="Ive"> Ive </label>
+                        <label class="me-2"><input type="checkbox" v-model="newInterests"
+                                value="(G)I-DLE">(G)I-DLE</label>
+                        <label class="me-2"><input type="checkbox" v-model="newInterests" value="Stayc"> Stayc</label>
+                    </div>
+                </div>
+                <div>
+                    <label class="me-2 mt-2 d-block">備註</label>
+                    <textarea v-model="newNote"></textarea>
+                </div>
+                <button @click="prepareAddMember" class="btn btn-primary mt-2 rounded-pill fw-bold"
+                    style="width: 100px;">送出</button>
+                <button v-if="editIndex !== null" @click="saveEdit" class="btn btn-warning mt-2 rounded-pill fw-bold"
+                    style="width: 100px;">保存編輯</button>
+            </div>
+
+            <!-- 显示所有数据的表格 -->
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>帳號</th>
+                        <th>姓名</th>
+                        <th>國家</th>
+                        <th>城市</th>
+                        <th>性別</th>
+                        <th>專長</th>
+                        <th>興趣</th>
+                        <th>備註</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(member, index) in members" :key="index">
+                        <td>{{ member.account }}</td>
+                        <td>{{ member.name }}</td>
+                        <td>{{ member.country }}</td>
+                        <td>{{ member.city }}</td>
+                        <td>{{ member.gender }}</td>
+                        <td>{{ member.skill }}</td>
+                        <td>{{ member.interests.join(', ') }}</td>
+                        <td>{{ member.note }}</td>
+                        <td>
+                            <button @click="removeMember(index)" class="btn btn-danger btn-sm">刪除</button>
+                            <button @click="editMember(index)" class="btn btn-warning btn-sm">編輯</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 查詢页面 -->
+        <div v-if="currentView === 'query'" id="Queryarea">
+            <button class="m-2 btn btn-secondary rounded-pill">會員查詢</button>
+            <div class="border border-2 outer-border d-flex" style="height: 220px;">
+                <div class="container custom-container">
+                    <div class="row">
+                        <div class="col-8 mt-3">
+                            <label>紀錄日期</label>
+                            <span>開始日</span> <input type="date" v-model="queryStartDate"> <span>~結束日 </span> <input
+                                type="date" v-model="queryEndDate">
+                            <div class="mt-2">
+                                <label>國家</label> <select v-model="queryCountry">
+                                    <option value="">全部</option>
+                                    <option>台灣</option>
+                                    <option>新加坡</option>
+                                </select>
+                            </div>
+                            <div class="mt-2">
+                                <label>專長</label> <select v-model="querySkill">
+                                    <option value="">全部</option>
+                                    <option>程式設計</option>
+                                    <option>設計</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="mt-3">
+                                <label>流水號</label> <input v-model="querySerial">
+                            </div>
+                            <div class="mt-2">
+                                <label>城市</label> <select v-model="queryCity">
+                                    <option value="">全部</option>
+                                    <option>台北</option>
+                                    <option>吉隆坡</option>
+                                </select>
+                            </div>
+                            <div class="mt-2">
+                                <label>帳號</label> <input v-model="queryAccount">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row justify-content-center mt-3">
+                        <button @click="searchMembers" class="m-2 btn btn-primary rounded-pill"
+                            style="width: 80px;">查詢</button>
+                    </div>
+                </div>
+            </div>
+            <div class="row justify-content-center mt-3">
+                <button class="m-2 btn btn-primary rounded-pill" style="width: 80px;">刪除</button>
+            </div>
+
+            <!-- 只显示过滤后的表格 -->
+            <table class="table table-bordered table-striped mt-3">
+                <thead>
+                    <tr>
+                        <th>帳號</th>
+                        <th>姓名</th>
+                        <th>國家</th>
+                        <th>城市</th>
+                        <th>性別</th>
+                        <th>專長</th>
+                        <th>興趣</th>
+                        <th>備註</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(member, index) in filteredMembers" :key="index">
+                        <td>{{ member.account }}</td>
+                        <td>{{ member.name }}</td>
+                        <td>{{ member.country }}</td>
+                        <td>{{ member.city }}</td>
+                        <td>{{ member.gender }}</td>
+                        <td>{{ member.skill }}</td>
+                        <td>{{ member.interests.join(', ') }}</td>
+                        <td>{{ member.note }}</td>
+                        <td>
+                            <button @click="removeMember(index)" class="btn btn-danger btn-sm">刪除</button>
+                            <button @click="editMember(index)" class="btn btn-warning btn-sm">編輯</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    CLIENT_ID: '672865532581-f3qqs8e563dkr2g4o2caniu6tolklcl8.apps.googleusercontent.com',
+                    API_KEY: 'AIzaSyAPof1bv8oGFZz2JOMnw_U-3mgecLqB-0g',
+                    SPREADSHEET_ID: '1rmOQX3WPvXd0kVIgWEfegnKEeMEP5-r8nPGIB9onH_Q',
+                    RANGE: 'Test123!A2:H',
+                    SHEETNAME: 'Test123',
+                    newAccount: '',
+                    newName: '',
+                    newCountry: '',
+                    newCity: '',
+                    newGender: '',
+                    newSkill: '',
+                    newInterests: [],
+                    newNote: '',
+                    members: [],
+                    filteredMembers: [],
+                    queryAccount: '',
+                    queryStartDate: '',
+                    queryEndDate: '',
+                    queryCountry: '',
+                    queryCity: '',
+                    querySkill: '',
+                    querySerial: '',
+                    isAuthorized: false,
+                    pendingMember: null,
+                    sheetId: null,
+                    editIndex: null,
+                    currentView: 'add'
+                };
+            },
+            methods: {
+                async initializeAPI() {
+                    const authCallback = async () => {
+                        this.isAuthorized = true;
+                        this.sheetId = await getSheetId(this.SPREADSHEET_ID, this.SHEETNAME);
+                        this.listMajors();
+                        if (this.pendingMember) {
+                            this.addMember();
+                        }
+                    };
+                    window.authCallback = authCallback;
+                    initializeGoogleSheetsAPI(this.CLIENT_ID, this.API_KEY, authCallback);
+                },
+                handleAuthClick() {
+                    handleAuthClick();
+                },
+                handleSignoutClick() {
+                    handleSignoutClick();
+                    this.isAuthorized = false;
+                },
+                async listMajors() {
+                    const values = await listMajors(this.SPREADSHEET_ID, this.RANGE);
+                    this.members = values.map((row, index) => ({
+                        account: row[0],
+                        name: row[1],
+                        country: row[2],
+                        city: row[3],
+                        gender: row[4],
+                        skill: row[5],
+                        interests: row[6] ? row[6].split(', ') : [],
+                        note: row[7],
+                        originalIndex: index // 添加原始索引
+                    }));
+                    this.filteredMembers = this.members;
+                },
+                prepareAddMember() {
+                    if (!this.isAuthorized) {
+                        this.pendingMember = true;
+                        this.handleAuthClick();
+                    } else {
+                        this.addMember();
+                    }
+                },
+                async addMember() {
+                    if (this.newAccount.trim() && this.newName.trim()) {
+                        const newMember = {
+                            account: this.newAccount,
+                            name: this.newName,
+                            country: this.newCountry,
+                            city: this.newCity,
+                            gender: this.newGender,
+                            skill: this.newSkill,
+                            interests: this.newInterests,
+                            note: this.newNote
+                        };
+                        this.members.push(newMember);
+
+                        const values = [[
+                            this.newAccount, this.newName, this.newCountry, this.newCity,
+                            this.newGender, this.newSkill, this.newInterests.join(', '), this.newNote
+                        ]];
+                        await addRow(this.SPREADSHEET_ID, this.RANGE, values);
+                        this.resetForm();
+                        this.listMajors();
+                    } else {
+                        alert('請填寫完整資料!');
+                    }
+                    this.pendingMember = false;
+                },
+                async removeMember(index) {
+                    const originalIndex = this.filteredMembers[index].originalIndex; // 获取原始索引
+                    if (this.sheetId !== null) {
+                        await deleteRow(this.SPREADSHEET_ID, this.sheetId, originalIndex + 1); // 使用原始索引删除行，Google Sheets 行索引从1开始
+                        this.listMajors();
+                    } else {
+                        console.error('Sheet ID is not available.');
+                    }
+                },
+                editMember(index) {
+                    const member = this.members[index];
+                    this.newAccount = member.account;
+                    this.newName = member.name;
+                    this.newCountry = member.country;
+                    this.newCity = member.city;
+                    this.newGender = member.gender;
+                    this.newSkill = member.skill;
+                    this.newInterests = member.interests;
+                    this.newNote = member.note;
+                    this.editIndex = index;
+                    this.currentView = 'add';
+                },
+                async saveEdit() {
+                    if (this.editIndex !== null && this.sheetId !== null) {
+                        const updatedMember = {
+                            account: this.newAccount,
+                            name: this.newName,
+                            country: this.newCountry,
+                            city: this.newCity,
+                            gender: this.newGender,
+                            skill: this.newSkill,
+                            interests: this.newInterests,
+                            note: this.newNote
+                        };
+                        this.members[this.editIndex] = updatedMember;
+
+                        const values = [
+                            [this.newAccount],
+                            [this.newName],
+                            [this.newCountry],
+                            [this.newCity],
+                            [this.newGender],
+                            [this.newSkill],
+                            [this.newInterests.join(', ')],
+                            [this.newNote]
+                        ];
+
+                        for (let i = 0; i < values.length; i++) {
+                            await updateCell(this.SPREADSHEET_ID, this.sheetId, { row: this.editIndex + 1, col: i }, values[i][0]);
+                        }
+
+                        this.resetForm();
+                        this.editIndex = null;
+                        this.listMajors();
+                    } else {
+                        alert('請填寫完整資料!');
+                    }
+                },
+                resetForm() {
+                    this.newAccount = '';
+                    this.newName = '';
+                    this.newCountry = '';
+                    this.newCity = '';
+                    this.newGender = '';
+                    this.newSkill = '';
+                    this.newInterests = [];
+                    this.newNote = '';
+                    this.editIndex = null;
+                },
+                searchMembers() {
+                    this.filteredMembers = this.members.filter(member => {
+                        const matchesAccount = !this.queryAccount || member.account.includes(this.queryAccount);
+                        const matchesCountry = !this.queryCountry || member.country === this.queryCountry;
+                        const matchesCity = !this.queryCity || member.city === this.queryCity;
+                        const matchesSkill = !this.querySkill || member.skill.includes(this.querySkill);
+                        return matchesAccount && matchesCountry && matchesCity && matchesSkill;
+                    });
+                }
+            },
+            mounted() {
+                this.initializeAPI();
+            }
+        });
+
+        app.mount('#app');
+    </script>
+</body>
+
+</html>
